@@ -33,40 +33,32 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <opencv2/opencv.hpp>
-#include <iostream>
-#include <string>
-#include <ctime>
+#ifndef _SYMBRISK_H_
+#define _SYMBRISK_H_
 
-#include <own/own.h>
+#include <opencv2/features2d/features2d.hpp>
+#include <opencv2/core/core.hpp>
+#include <emmintrin.h>
 
-using namespace std;
+#ifndef M_PI
+	#define M_PI 3.141592653589793
+#endif
 
-int main(int argc, char ** argv) {
 
-	cv::Mat image = cv::imread("/home/jaime/Documents/MATLAB/Symmetry/Images/but.jpg");
-	cv::namedWindow("Orig");
-	cv::imshow("Orig", image);
+namespace brisk{
 
-	std::vector<cv::KeyPoint> keypoints;
-	cv::Ptr<cv::FeatureDetector> detector;
+class CV_EXPORTS symBriskExtractor : public cv::DescriptorExtractor {
 
-	detector = new own::OwnFeatureDetector(0.5,8,10);
-	
-	clock_t begin = clock();
-	detector->detect(image,keypoints);
-	clock_t end = clock();
-	
-	double secs = double(end-begin)/CLOCKS_PER_SEC;
-	cout << "Time for 10 feature maps = " << secs << endl;
-	cout << "Number of keypoints	 = " << keypoints.size() << endl;
+public:
+	static cv::Ptr<symBriskExtractor> create(bool rotationInvariant=true, bool scaleInvariant=true,
+		float patternScale=1.0f);
 
-	//cv::Mat toShow;
-	//cv::drawKeypoints(image, keypoints, toShow);
-	//cv::namedWindow("Detected");
-	//cv::imshow("Detected", toShow);
+	virtual void computeAngles(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints) = 0;
 
-	cv::waitKey(0);
+	virtual void compute(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors) = 0;
 
-	return 0;
+};
+
 }
+
+#endif //_BRISK_H_

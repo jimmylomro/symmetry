@@ -16,11 +16,11 @@
 #include <iostream>
 
 #include <opencv2/imgproc/imgproc.hpp>
-#include <own/nms.h>
+#include <nms.h>
 
 using namespace cv;
 
-void nonMaximaSuppression(Mat& src, const int sz, vector<KeyPoint> &keypoints, const float thresh, int kernSize, const int featID) {
+void nonMaximaSuppression(Mat& src, const int sz, std::vector<KeyPoint> &keypoints, const float thresh, int kernSize, const int featID) {
 
 	if (src.type() != CV_32FC1)
 		return;

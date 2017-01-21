@@ -30,9 +30,9 @@
 #include <opencv2/opencv.hpp>
 #include <stdexcept>
 #include <algorithm>
-#include <own/own_params.h>
-#include <own/own.h>
-#include <own/nms.h>
+#include <own_params.h>
+#include <own.h>
+#include <nms.h>
 
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -292,12 +292,35 @@ void own::OwnFeatureMaps::getFeatureMaps(std::vector<cv::Mat>& toReturn) {
 
 
 //---------------------------------------------------------------------------------------------------------------------
-//-----------------------------OwnFeatureDetector----------------------------------------------------------------------
+//-----------------------------OwnFeatureDetector_Impl-----------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------
+// Implementation class
+
+class OwnFeatureDetector_Impl : public own::OwnFeatureDetector {
+	public:
+		OwnFeatureDetector_Impl(float thresh = 0.5, int M = 8, int K = 30, int kernSize = 32);
+		~OwnFeatureDetector_Impl(void);
+			
+		float thresh;
+		int M;
+		int K;
+		int kernSize;
+
+		// accesors
+		void getFeatureMaps(std::vector<cv::Mat>& featureMaps);
+		
+		// cv::FeatureDetector
+		void detect(const cv::Mat& image,
+				std::vector<cv::KeyPoint>& keypoints,
+				const cv::Mat& mask=cv::Mat() );	
+		
+	private:
+		own::OwnFeatureMaps *fm;
+};
+
 
 // Constructor
-own::OwnFeatureDetector::OwnFeatureDetector(float thresh, int M, int K, int kernSize) {
-
+OwnFeatureDetector_Impl::OwnFeatureDetector_Impl(float thresh, int M, int K, int kernSize) {
 	this->thresh	= thresh;
 	this->M 	= M;
 	this->K		= K;
@@ -308,20 +331,32 @@ own::OwnFeatureDetector::OwnFeatureDetector(float thresh, int M, int K, int kern
 
 
 // Methods
-void own::OwnFeatureDetector::getFeatureMaps(std::vector<cv::Mat>& featureMaps) {
+void OwnFeatureDetector_Impl::getFeatureMaps(std::vector<cv::Mat>& featureMaps) {
 
 	fm->getFeatureMaps(featureMaps);
 }
 
 
-void own::OwnFeatureDetector::detectImpl(const cv::Mat& image,
+void OwnFeatureDetector_Impl::detect(const cv::Mat& image,
 					std::vector<cv::KeyPoint>& keypoints,
-					const cv::Mat& mask) const {
+					const cv::Mat& mask) {
 
 	fm->detectKeypoints(keypoints, image);
 }
 
-own::OwnFeatureDetector::~OwnFeatureDetector(void) {
+
+OwnFeatureDetector_Impl::~OwnFeatureDetector_Impl(void) {
 
 	delete fm;
+}
+
+
+//---------------------------------------------------------------------------------------------------------------------
+//-----------------------------OwnFeatureDetector_Impl-----------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------
+// Wrapper class
+
+cv::Ptr<own::OwnFeatureDetector> own::OwnFeatureDetector::create(float thresh, int M, int K, int kernSize) {
+
+    return cv::makePtr<OwnFeatureDetector_Impl>(thresh, M, K, kernSize);
 }
