@@ -11,7 +11,7 @@ int main(void) {
 
 	// Read images and convert to gray scale
 	cv::Mat imgRGB1 = cv::imread("../res/img1.jpg");
-	cv::Mat imgRGB2 = cv::imread("../res/img2.jpg");
+	cv::Mat imgRGB2 = cv::imread("../res/img1.jpg");
 	cv::Mat imgGray1;
 	cv::Mat imgGray2;
 	cv::cvtColor(imgRGB1, imgGray1, CV_BGR2GRAY);
@@ -29,9 +29,10 @@ int main(void) {
 	// get the symBrisk descriptors
 	cv::Mat descriptors1;
 	cv::Mat descriptors2;
+	cv::Mat mirrDescriptors;
 	cv::Ptr<brisk::symBriskExtractor> descriptorExtractor = brisk::symBriskExtractor::create();
-	descriptorExtractor->compute(imgGray1,keypoints1,descriptors1);
-	descriptorExtractor->compute(imgGray2,keypoints2,descriptors2);
+	descriptorExtractor->compute(imgGray1,keypoints1,descriptors1, mirrDescriptors);
+	descriptorExtractor->compute(imgGray2,keypoints2,descriptors2, mirrDescriptors);
 
 
 	// matching

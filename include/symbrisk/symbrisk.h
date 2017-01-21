@@ -55,7 +55,7 @@ public:
 
 	virtual void computeAngles(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints) = 0;
 
-	virtual void compute(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors) = 0;
+	virtual void compute(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors, cv::Mat& mirror_descriptors) = 0;
 
 };
 
