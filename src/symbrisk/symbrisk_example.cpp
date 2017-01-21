@@ -11,7 +11,7 @@ int main(void) {
 
 	// Read images and convert to gray scale
 	cv::Mat imgRGB1 = cv::imread("../res/img1.jpg");
-	cv::Mat imgRGB2 = cv::imread("../res/img1.jpg");
+	cv::Mat imgRGB2 = cv::imread("../res/img2.jpg");
 	cv::Mat imgGray1;
 	cv::Mat imgGray2;
 	cv::cvtColor(imgRGB1, imgGray1, CV_BGR2GRAY);
