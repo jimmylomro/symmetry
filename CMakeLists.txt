@@ -33,6 +33,12 @@ link_directories(${OpenCV_LIB_DIR})
 add_library(symbrisk_static STATIC  src/symbrisk/symbrisk.cpp)
 target_link_libraries(symbrisk_static ${OpenV_LIBS})
 
+# dbscan
+include_directories(include/dbscan)
+link_directories(${OpenCV_LIB_DIR})
+add_library(dbscan_static STATIC  src/dbscan/dbscan.cpp)
+target_link_libraries(dbscan_static ${OpenV_LIBS})
+
 
 #------- Examples
 
