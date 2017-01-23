@@ -204,7 +204,7 @@ echo "Error: Did not imbed 'options.sh' code"; exit 1 #imbed options.sh mac 12
             # C++keyVersion: 
             CXX=g++
             CXXFLAGS="-fno-common -no-cpp-precomp -fexceptions -arch $ARCHS -isysroot $SDKROOT -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -msse2 -mssse3"
-            CXXLIBS="$MLIBS -lstdc++ -Wl,-rpath,../lib -lown_static -lbfm_static -lopencv_core -lopencv_features2d -lopencv_imgproc -lopencv_calib3d -lopencv_highgui -lopencv_core -lopencv_flann"
+            CXXLIBS="$MLIBS -lstdc++ -Wl -lopencv_core -lopencv_features2d -lopencv_imgproc -lopencv_calib3d -lopencv_highgui -lopencv_core -lopencv_flann"
             CXXOPTIMFLAGS='-O2 -DNDEBUG'
             CXXDEBUGFLAGS='-g'
 #
@@ -255,8 +255,6 @@ echo "Error: Did not imbed 'options.sh' code"; exit 1 #imbed options.sh mac 12
             CXX=g++
             CXXFLAGS="-fno-common -no-cpp-precomp -fexceptions -arch $ARCHS -isysroot $SDKROOT -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -msse2 -mssse3"
             CXXLIBS="$MLIBS -lstdc++ -framework Accelerate -framework OpenCL"
-            # -Wl,-rpath,../lib -lown_static -lbfm_static"
-            #CXXLIBS="$CXXLIBS -lopencv_calib3d -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc -lopencv_ml -lopencv_objdetect -lopencv_photo -lopencv_shape -lopencv_stitching -lopencv_superres -lopencv_video -lopencv_videoio -lopencv_videostab -lopencv_aruco -lopencv_bgsegm -lopencv_bioinspired -lopencv_ccalib -lopencv_datasets -lopencv_dnn -lopencv_dpm -lopencv_face -lopencv_fuzzy -lopencv_line_descriptor -lopencv_optflow -lopencv_phase_unwrapping -lopencv_plot -lopencv_reg -lopencv_rgbd -lopencv_saliency -lopencv_stereo -lopencv_structured_light -lopencv_surface_matching -lopencv_text -lopencv_tracking -lopencv_xfeatures2d -lopencv_ximgproc -lopencv_xobjdetect -lopencv_xphoto"
             CXXOPTIMFLAGS='-O2 -DNDEBUG'
             CXXDEBUGFLAGS='-g'
 #

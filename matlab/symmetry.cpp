@@ -1,73 +1,11 @@
 /*=================================================================
- *
- * BRISK.C  .MEX interface to the BRISK C++ library
- *	    Detects, extracts and matches BRISK features
- *          Implementation according to 
- *
- *      [1] Stefan Leutenegger, 
- *          Margarita Chli and Roland Siegwart, BRISK: Binary 
- *          Robust Invariant Scalable Keypoints, in Proceedings of 
- *          the IEEE International Conference on Computer Vision 
- *          (ICCV) 2011.
- *
- * The calling syntax is:
- *
- *	varargout = brisk(subfunction, morevarargin)
- *
- *      where subfunction is to be used in order:
- *
- *      'init'        Initialize brisk. Optionally pass arguments to 
- *                    set properties (see below). 
- *                    Attention: this will create the pattern look-up table,
- *                    so this may take some fraction of a second. 
- *                    Do not rerun!
- *
- *      'set'         Set properties. The following may be set:
- *                    '-threshold'    FAST/AGAST detection threshold.
- *                                  The default value is 60.
- *                    '-kernSize'      No. kernSize for the detection.
- *                                  The default value is 4.
- *                    '-patternScale' Scale factor for the BRISK pattern.
- *                                  The default value is 1.0.
- *                    '-type'         BRISK special type 'S', 'U', 'SU'.
- *                                  By default, the standard BRISK is used.
- *                                    See [1] for explanations on this.
- *                    Attention: if the patternScale or the type is reset, 
- *                    the pattern will be regenerated, which is time-
- *                    consuming!
- *
- *      'loadImage'   Load an image either from Matlab workspace by passing
- *                    a UINT8 Matrix as a second argument, or by specifying 
- *                    a path to an image:
- *                        brisk('loadImage',imread('path/to/image'));
- *                        brisk('loadImage','path/to/image');
- *
- *      'detect'      Detect the keypoints. Optionally get the points back:
- *                      brisk('detect');
- *                      keyPoints=brisk('detect');
- *
- *      'describe'    Get the descriptors and the corresponding keypoints
- *                      [keyPoints,descriptors]=brisk('detect');
- *
- *      'radiusMatch' Radius match.
- *                      [indicesOfSecondKeyPoints]=brisk('radiusMatch',...
- *                          firstKeypoints,secondKeyPoints);
  * 
- *      'knnMatch'    k-nearest neighbor match.
- *                      [indicesOfSecondKeyPoints]=brisk('knnMatch',...
- *                          firstKeypoints,secondKeyPoints,k);
- *
- *      'image'       Returns the currently used gray-scale image
- *                      image=brisk('image');
- *
- *      'terminate'   Free the memory.
- *
- *
  * 
- * This file is part of BRISK.
- * 
+ * THIS CODE IS HEAVILY BASED ON:
  * Copyright (C) 2011  The Autonomous Systems Lab (ASL), ETH Zurich,
  * Stefan Leutenegger, Simon Lynen and Margarita Chli.
+ *
+ * Modifications by: Jaime Lomeli-R.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -93,7 +31,7 @@
  *
  *=================================================================*/
 
-#include "brisk_interface.h"
+#include "symmetry_interface.h"
 #include <cstring>
 #include <string>
 
@@ -206,6 +144,15 @@ inline void symmetryInterface::set(int nlhs, mxArray *plhs[], int nrhs, const mx
             initDescriptor = true;
         }
         
+        else if (strcmp(str2,"matcher_dist")==0){
+            if(!mxIsScalarNonComplexDouble(prhs[i+1]))
+                mexErrMsgTxt("Bad input.");
+            double* x=mxGetPr(prhs[i+1]);
+            if(*x<0) matcher_dist = 0;
+            else if(*x>512) matcher_dist = 512;
+            else matcher_dist=int(*x);
+        }
+        
         else if (strcmp(str2,"matcher_maskFeats")==0) {
             if(!(mxGetClassID(prhs[i+1])==mxLOGICAL_CLASS))
                 mexErrMsgTxt("Bad input.");
@@ -229,8 +176,8 @@ inline void symmetryInterface::set(int nlhs, mxArray *plhs[], int nrhs, const mx
             if(!mxIsScalarNonComplexDouble(prhs[i+1]))
                 mexErrMsgTxt("Bad input.");
             double* x=mxGetPr(prhs[i+1]);
-            if(*x<0) own_kernSize = 0;
-            else own_kernSize=int(*x);
+            if(*x<0) dbscan_minPts = 0;
+            else dbscan_minPts=int(*x);
             initDbscan = true;
         }
         
@@ -242,7 +189,7 @@ inline void symmetryInterface::set(int nlhs, mxArray *plhs[], int nrhs, const mx
         if(detectorPtr != NULL)
             detectorPtr.release();
         
-        detector = own::OwnFeatureDetector::create(own_threshold, 8, own_nMaps, own_kernSize);
+        detectorPtr = own::OwnFeatureDetector::create(own_threshold, 8, own_nMaps, own_kernSize);
     }
     
     if(initDescriptor || descriptorPtr == NULL) {
@@ -319,28 +266,6 @@ inline void symmetryInterface::detect( int nlhs, mxArray *plhs[], int nrhs, cons
     assert(detectorPtr == NULL);
     detectorPtr->detect(img, keypoints);
 
-
-	int N = keypoints.size();
-    if (maskFeats) {
-		matchingMask = cv::Mat::zeros(N,N,CV_8UC1);
-		
-        int y0      = 0;
-        int past_id = keypoints[y0].class_id;
-        for (int y1 = 0; y1 < N; y1++) {
-            if (keypoints[y1].class_id != past_id) {
-                cv::rectangle(matchingMask, cv::Point(y0,y0), cv::Point(y1-1,y1-1), cv::Scalar(255), CV_FILLED);
-                y0 = y1;
-                past_id = keypoints[y1].class_id;
-            }
-        }
-        // draw last rectangle
-        cv::rectangle(matchingMask, cv::Point(y0,y0), cv::Point(N-1,N-1), cv::Scalar(255), CV_FILLED);
-    }
-    else {
-    	matchingMask = cv::Mat::ones(N,N,CV_8UC1) * 255;
-    }
-
-
     // send the keypoints to the user, if he wants it
     // allocate plhs
     if(nlhs>=1){
@@ -382,6 +307,30 @@ inline void symmetryInterface::describe(int nlhs, mxArray *plhs[], int nrhs, con
     cv::Mat descriptors, mirrorDescriptors;
     assert(descriptorPtr == NULL);
     descriptorPtr->compute(img, keypoints, descriptors, mirrorDescriptors);
+    
+    
+    
+	const int keypoint_size = keypoints.size();
+    if (matcher_maskFeats) {
+		matchingMask = cv::Mat::zeros(keypoint_size,keypoint_size,CV_8UC1);
+		
+        int y0      = 0;
+        int past_id = keypoints[y0].class_id;
+        for (int y1 = 0; y1 < keypoint_size; y1++) {
+            if (keypoints[y1].class_id != past_id) {
+                cv::rectangle(matchingMask, cv::Point(y0,y0), cv::Point(y1-1,y1-1), cv::Scalar(255), CV_FILLED);
+                y0 = y1;
+                past_id = keypoints[y1].class_id;
+            }
+        }
+        // draw last rectangle
+        cv::rectangle(matchingMask, cv::Point(y0,y0), cv::Point(keypoint_size-1,keypoint_size-1), cv::Scalar(255), CV_FILLED);
+    }
+    else {
+    	matchingMask = cv::Mat::ones(keypoint_size,keypoint_size,CV_8UC1) * 255;
+    }
+
+    
 
     // allocate the lhs mirror descriptor matrix
     int dim[2];
@@ -405,7 +354,6 @@ inline void symmetryInterface::describe(int nlhs, mxArray *plhs[], int nrhs, con
     mexCallMATLAB(1, &plhs[1], 1, &tmp1, "transpose");
 
     // also write the keypoints
-    const int keypoint_size=keypoints.size();
     mxArray* tmp;
     tmp=mxCreateDoubleMatrix(6,keypoint_size,mxREAL);
     double *ptr=mxGetPr(tmp);
@@ -429,7 +377,7 @@ inline void symmetryInterface::describe(int nlhs, mxArray *plhs[], int nrhs, con
 inline void symmetryInterface::knnMatch( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ){
 
     // ensure correct arguments
-    if(nrhs<3)
+    if(nrhs!=3)
         mexErrMsgTxt("Two descriptors must be passed.");
     if(nlhs!=1)
         mexErrMsgTxt("Specify one output argument.");
@@ -451,28 +399,12 @@ inline void symmetryInterface::knnMatch( int nlhs, mxArray *plhs[], int nrhs, co
     cv::Mat d1m(N1,M,CV_8U,data1);
     cv::Mat d2m(N2,M,CV_8U,data2);
 
-    // get the number of nearest neighbors if provided
+    // number of nearest neighbors
     int k=1;
-    if(nrhs>3){
-        if(!mxIsScalarNonComplexDouble(prhs[3]))
-            mexErrMsgTxt("Wrong type for no. nearest neighbors.");
-        double* kd=mxGetPr(prhs[3]);
-        if (*kd<1.0) *kd=1.0;
-        k=int(*kd);
-    }
-    
-    int r = 100;
-    if(nrhs>4){
-        if(!mxIsScalarNonComplexDouble(prhs[4]))
-            mexErrMsgTxt("Wrong type of radius.");
-        double* kd=mxGetPr(prhs[4]);
-        if (*kd<1.0) *kd=1.0;
-        r=int(*kd);
-    }
 
     // perform the match
     std::vector<std::vector<cv::DMatch> > matches;
-    if (maskFeats)
+    if (matcher_maskFeats)
         matcherPtr->knnMatch(d1m,d2m,matches,k,matchingMask);
     else
         matcherPtr->knnMatch(d1m,d2m,matches,k);
@@ -489,7 +421,7 @@ inline void symmetryInterface::knnMatch( int nlhs, mxArray *plhs[], int nrhs, co
     for(int m=0; m<msize; m++){
         const unsigned int size=matches[m].size();
         for(int s=0; s<size; s++){
-            if (matches[m][s].distance < r)
+            if (matches[m][s].distance < matcher_dist)
                 data[m+s*msize]=matches[m][s].trainIdx+1;
         }
     }
@@ -502,12 +434,12 @@ inline void symmetryInterface::cluster(int nlhs, mxArray *plhs[], int nrhs, cons
     if(nlhs!=1) 
         mexErrMsgTxt("One left-hand side argument must be passed.");
 
-    if(nrhs != 1) 
+    if(nrhs != 2) 
         mexErrMsgTxt("Parameter space points must be passed.");
         
     // get the input matrix
     mxArray *desc;
-    mexCallMATLAB(1, &desc, 1, (mxArray**)&prhs[0], "transpose");
+    mexCallMATLAB(1, &desc, 1, (mxArray**)&prhs[1], "transpose");
 
     // cast to cv::Mat
     const int N = mxGetN(desc);
@@ -524,9 +456,9 @@ inline void symmetryInterface::cluster(int nlhs, mxArray *plhs[], int nrhs, cons
     int dim[2] = {dst.cols, dst.rows};
 
     mxArray* tmp = mxCreateNumericArray(2,dim,mxUINT8_CLASS,mxREAL);
-    uchar* data = (uchar*) mxGetData(tmp); 
+    uchar* data2 = (uchar*) mxGetData(tmp); 
     // copy - kind of dumb, but necessary due to the matlab memory management
-    memcpy(data,dst.data,dim[0]*dim[1]);
+    memcpy(data2,dst.data,dim[0]*dim[1]);
     
     mexCallMATLAB(1, &plhs[0], 1, &tmp, "transpose");
 }
@@ -558,7 +490,7 @@ inline void symmetryInterface::image( int nlhs, mxArray *plhs[],
 
 // ---------------------------------------------------------------------
 // the interface object
-BriskInterface* p_briskInterface=0;
+symmetryInterface* interface=0;
 
 // this is the actual (single) entry point:
 void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )     
@@ -571,69 +503,69 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     char* str=mxArrayToString(prhs[0]);
     
     if(strcmp(str,"init")==0) {
-        if(!p_briskInterface) {
-            p_briskInterface=new BriskInterface(nlhs, plhs, nrhs, prhs);
+        if(!interface) {
+            interface=new symmetryInterface(nlhs, plhs, nrhs, prhs);
             // make sure the memory requested persists. 
-            //mexMakeMemoryPersistent(p_briskInterface);
+            //mexMakeMemoryPersistent(interface);
         }
         else{
-            mexErrMsgTxt("Brisk is already initialized.");
+            mexErrMsgTxt("symmetry is already initialized.");
         }
     }
     else if(strcmp(str,"set")==0){
-        p_briskInterface->set(nlhs, plhs, nrhs, prhs);
+        interface->set(nlhs, plhs, nrhs, prhs);
     }
     else if(strcmp(str,"loadImage")==0){
         // init if necessary
-        if(!p_briskInterface) {
-            p_briskInterface = new BriskInterface(nlhs, plhs, 1, prhs);
-            //mexMakeMemoryPersistent(p_briskInterface);
+        if(!interface) {
+            interface = new symmetryInterface(nlhs, plhs, 1, prhs);
+            //mexMakeMemoryPersistent(interface);
         }
-        p_briskInterface->loadImage(nlhs, plhs, nrhs, prhs);
+        interface->loadImage(nlhs, plhs, nrhs, prhs);
     }
     else if(strcmp(str,"detect")==0){
         // force initialized
-        if(!p_briskInterface) {
+        if(!interface) {
             mexErrMsgTxt("Not initialized, no image loaded.");
         }
-        p_briskInterface->detect(nlhs, plhs, nrhs, prhs);
+        interface->detect(nlhs, plhs, nrhs, prhs);
     }
     else if(strcmp(str,"describe")==0) {
         // force initialized
-        if(!p_briskInterface) {
+        if(!interface) {
             mexErrMsgTxt("Not initialized, no image loaded.");
         }
-        p_briskInterface->describe(nlhs, plhs, nrhs, prhs);
+        interface->describe(nlhs, plhs, nrhs, prhs);
     }
     else if(strcmp(str,"knnMatch")==0) {
         // init if necessary
-        if(!p_briskInterface) {
-            p_briskInterface = new BriskInterface(nlhs, plhs, 1, prhs);
-            //mexMakeMemoryPersistent(p_briskInterface);
+        if(!interface) {
+            interface = new symmetryInterface(nlhs, plhs, 1, prhs);
+            //mexMakeMemoryPersistent(interface);
         }
-        p_briskInterface->knnMatch(nlhs,plhs,nrhs,prhs);
+        interface->knnMatch(nlhs,plhs,nrhs,prhs);
     }
     else if(strcmp(str,"cluster")==0){
         // force initialized
-        if(!p_briskInterface) {
+        if(!interface) {
             mexErrMsgTxt("Not initialized, no image loaded.");
         }
-        p_briskInterface->cluster(nlhs, plhs, nrhs, prhs);
+        interface->cluster(nlhs, plhs, nrhs, prhs);
     }
     else if(strcmp(str,"image")==0) {
         // init if necessary
-        if(!p_briskInterface) {
+        if(!interface) {
            mexErrMsgTxt("Not initialized, no image loaded.");
         }
-        p_briskInterface->image(nlhs,plhs,nrhs,prhs);
+        interface->image(nlhs,plhs,nrhs,prhs);
     }
     else if(strcmp(str,"terminate")==0) {
-        if(p_briskInterface) {
-            delete p_briskInterface;
-            p_briskInterface=0;
+        if(interface) {
+            delete interface;
+            interface=0;
         }
         else{
-            mexErrMsgTxt("Brisk was not initialized anyways.");
+            mexErrMsgTxt("symmetry was not initialized anyways.");
         }
     }
     else{

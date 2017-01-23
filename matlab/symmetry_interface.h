@@ -88,9 +88,10 @@ private:
     float symbrisk_patternScale;
 
 	// matching settings
+    int   matcher_dist;
     bool  matcher_maskFeats;
     
     // dbscan settings
     float dbscan_epsilon;
-    int	  dbscan_minPts
+    int	  dbscan_minPts;
 };
