@@ -1,6 +1,6 @@
 % Symmetry detection using c++ libraries
 
-im=imread('../res/img3.jpg');
+im=imread('../res/img1.jpg');
 im=imresize(im,400/max(size(im)));
 
 % Detection parameters
