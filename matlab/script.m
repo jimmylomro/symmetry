@@ -1,6 +1,6 @@
 % Symmetry detection using c++ libraries
 
-im=imread('../res/img1.jpg');
+im=imread('../res/img3.jpg');
 im=imresize(im,400/max(size(im)));
 
 % Detection parameters
@@ -16,11 +16,11 @@ matchDist = 120;        % hamming distance
 maskFeats = true;       % match only keypoints of the same class
 
 % DBSCAN parameters
-epsilon     = 0.04;     % dbscan epsilon
+epsilon     = 0.05;     % dbscan epsilon
 minPts      = 50;       % dbscan minimum points
 
 % Axis regression
-singleAx    = true;    % single symmetry axis detection
+singleAx    = false;    % single symmetry axis detection
 fitMaxDeg   = 3;        % maximum degree for regression
 
 
@@ -88,11 +88,10 @@ time = toc;
 % display
 
 PlotClusterinResult(im, keypoints1, matches, ps(:,1:2), idx);
-
 figure;
 imshow(im);
 hold on;
-
+K = size(ctr,1);
 for k = 1:K
     plot(ctr{k}(1,:),ctr{k}(2,:),'y-','LineWidth',5);
 end
